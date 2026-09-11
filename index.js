@@ -1,4 +1,4 @@
-const { makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const express = require('express');
 const pino = require('pino');
@@ -24,6 +24,21 @@ async function connectToWhatsApp() {
 
     sock.ev.on('creds.update', saveCreds);
 
+    sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect } = update;
+        
+        if (connection === 'close') {
+            const shouldReconnect = (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut);
+            console.log('Conexão fechada. Reconectando...', shouldReconnect);
+            if (shouldReconnect) {
+                connectToWhatsApp();
+            }
+        } else if (connection === 'open') {
+            console.log('✅ WhatsApp conectado com sucesso!');
+        }
+    });
+
+    // Pede o código de pareamento após 8 segundos para garantir que o socket abriu
     if (!sock.authState.creds.registered) {
         setTimeout(async () => {
             try {
@@ -34,15 +49,8 @@ async function connectToWhatsApp() {
             } catch (err) {
                 console.error('Erro ao gerar código de pareamento:', err);
             }
-        }, 4000);
+        }, 8000);
     }
-
-    sock.ev.on('connection.update', (update) => {
-        const { connection } = update;
-        if (connection === 'open') {
-            console.log('✅ WhatsApp conectado com sucesso!');
-        }
-    });
 
     sock.ev.on('messages.upsert', async (m) => {
         const msg = m.messages[0];

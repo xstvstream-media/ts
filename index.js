@@ -1,13 +1,14 @@
-const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const { makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-
 const express = require('express');
 
 const app = express();
 app.get('/', (req, res) => res.json({ status: 'ok' }));
 app.listen(process.env.PORT || 3000);
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const ai = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
 const ultimasMensagens = {};
 
 async function connectToWhatsApp() {
@@ -24,27 +25,25 @@ async function connectToWhatsApp() {
         const fromMe = msg.key.fromMe;
         const texto = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
 
-        // Salva a última mensagem da outra pessoa
         if (!fromMe && texto) {
             ultimasMensagens[remoteJid] = texto;
         }
 
-        // Quando você envia "kkk"
-        if (fromMe && /^k{3,}$/i.test(texto.trim())) {
+        if (fromMe && /^\/k( |$)|\/s.test(texto.trim())) {
             const ultimaMsg = ultimasMensagens[remoteJid];
             if (!ultimaMsg) return;
 
             try {
-                const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: `Você é um assistente engraçado, sarcástico e debochado. Responda à seguinte mensagem do WhatsApp em tom de zoeira, usando no máximo 1 frase bem curta: "${ultimaMsg}"`,
-                });
+                const result = await ai.generateContent(
+                    "Você é um assistente engraçado, sarcástico e debocheado. Responda à seguinte mensagem do WhatsApp: " + ultimaMsg
+                );
+                const responseText = result.response.text();
 
-                if (response.text) {
-                    await sock.sendMessage(remoteJid, { text: response.text.trim() });
+                if (responseText) {
+                    await sock.sendMessage(remoteJid, { text: responseText.trim() });
                 }
             } catch (error) {
-                console.error('Erro na API do Gemini:', error);
+                console.error('Erro na API de Gemini:', error);
             }
         }
     });

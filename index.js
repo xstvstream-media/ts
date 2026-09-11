@@ -1,5 +1,6 @@
 const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
 const express = require('express');
 
 const app = express();

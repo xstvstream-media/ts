@@ -29,7 +29,7 @@ async function connectToWhatsApp() {
             ultimasMensagens[remoteJid] = texto;
         }
 
-        if (fromMe && /^\/k( |$)|\/s.test(texto.trim())) {
+        if (fromMe && (texto.startsWith('/k') || texto.startsWith('/s'))) {
             const ultimaMsg = ultimasMensagens[remoteJid];
             if (!ultimaMsg) return;
 

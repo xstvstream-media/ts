@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gerenciador Zap Opus</title>
+  <title>Compartilhar Áudio Opus</title>
   <style>
     * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
     body { background-color: #0b141a; color: #e9edef; padding: 16px; display: flex; justify-content: center; }
@@ -21,7 +21,7 @@
     .audio-list { display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 4px; }
     .audio-item { 
       background: #202c33; padding: 12px; border-radius: 10px; border: 1px solid #2a3942; 
-      display: flex; flex-direction: column; gap: 8px; transition: 0.2s;
+      display: flex; flex-direction: column; gap: 8px;
     }
     .audio-header { display: flex; justify-content: space-between; align-items: center; }
     .audio-name { font-weight: bold; font-size: 14px; color: #e9edef; word-break: break-all; }
@@ -30,10 +30,11 @@
     audio { width: 100%; height: 32px; }
 
     .btn-send { 
-      background: #00a884; color: #111b21; border: none; padding: 10px; border-radius: 6px; 
-      font-weight: bold; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+      background: #25d366; color: #fff; border: none; padding: 12px; border-radius: 8px; 
+      font-weight: bold; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+      text-decoration: none;
     }
-    .btn-send:active { background: #008f6f; }
+    .btn-send:active { opacity: 0.8; }
 
     #status { margin-top: 15px; text-align: center; font-size: 13px; color: #00a884; font-weight: bold; }
   </style>
@@ -41,10 +42,10 @@
 <body>
 
   <div class="card">
-    <h2>📁 Gerenciador Zap Opus</h2>
+    <h2>🚀 Compartilhar Áudio Opus</h2>
     
     <label class="btn-import">
-      📂 Carregar Áudios do Celular
+      📂 Selecionar Áudio do Celular
       <input type="file" id="audioInput" accept="audio/*" multiple onchange="carregarAudios(event)">
     </label>
 
@@ -57,6 +58,7 @@
 
   <script>
     let listaArquivos = [];
+    const SEU_NUMERO = "5571991698042";
 
     function carregarAudios(event) {
       const files = event.target.files;
@@ -94,8 +96,8 @@
             <button class="btn-rename" onclick="renomearAudio(${item.id})">✏️ Renomear</button>
           </div>
           <audio src="${item.blobUrl}" controls></audio>
-          <button class="btn-send" onclick="enviarWhatsapp(${item.id})">
-            🚀 Converter & Enviar / Baixar
+          <button class="btn-send" onclick="processarEnvio(${item.id})">
+            📲 Enviar no WhatsApp
           </button>
         `;
 
@@ -114,54 +116,54 @@
       }
     }
 
-    async function enviarWhatsapp(id) {
+    async function processarEnvio(id) {
       const item = listaArquivos.find(a => a.id === id);
       const status = document.getElementById('status');
       if (!item) return;
 
-      status.innerText = `Processando "${item.name}.opus"...`;
+      status.innerText = `Preparando "${item.name}.opus"...`;
 
       try {
         const arrayBuffer = await item.originalFile.arrayBuffer();
-        const blobOpus = new Blob([arrayBuffer], { type: 'audio/ogg; codecs=opus' });
-        const finalFile = new File([blobOpus], `${item.name}.opus`, { type: 'audio/ogg; codecs=opus' });
+        // Usa tipo MIME aceito nativamente pelo Android para compatibilidade
+        const blobOpus = new Blob([arrayBuffer], { type: 'audio/ogg' });
+        const finalFile = new File([blobOpus], `${item.name}.opus`, { type: 'audio/ogg' });
 
-        // Tenta abrir a caixa de compartilhamento do WhatsApp
+        // Tenta o compartilhamento direto via sistema
         if (navigator.canShare && navigator.canShare({ files: [finalFile] })) {
           await navigator.share({
             files: [finalFile],
             title: `${item.name}.opus`
           });
-          status.innerText = 'Áudio enviado!';
+          status.innerText = 'Compartilhado com sucesso!';
         } else {
-          // Se o navegador bloquear o compartilhamento direto, força o download do arquivo .opus
-          forcarDownload(blobOpus, `${item.name}.opus`);
-          status.innerText = 'Áudio baixado como .opus! Só mandar no Zap.';
+          executarFallback(blobOpus, `${item.name}.opus`);
         }
-      } catch (err) {
-        // Se der erro no share (ex: localhost), faz o download direto sem travar
-        try {
-          const arrayBuffer = await item.originalFile.arrayBuffer();
-          const blobOpus = new Blob([arrayBuffer], { type: 'audio/ogg; codecs=opus' });
-          forcarDownload(blobOpus, `${item.name}.opus`);
-          status.innerText = 'Áudio baixado como .opus! Só mandar no Zap.';
-        } catch (e) {
-          status.innerText = 'Erro ao processar o arquivo.';
-        }
+      } catch (e) {
+        // Se o compartilhamento nativo falhar por causa do localhost, faz o fluxo de contingência
+        const arrayBuffer = await item.originalFile.arrayBuffer();
+        const blobOpus = new Blob([arrayBuffer], { type: 'audio/ogg' });
+        executarFallback(blobOpus, `${item.name}.opus`);
       }
     }
 
-    function forcarDownload(blob, fileName) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const a = document.createElement('a');
-        a.href = e.target.result;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      };
-      reader.readAsDataURL(blob);
+    function executarFallback(blob, fileName) {
+      const status = document.getElementById('status');
+      
+      // 1. Baixa o arquivo .opus para o celular
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      status.innerText = 'Áudio salvo nos Downloads! Abrindo WhatsApp...';
+
+      // 2. Redireciona direto para a sua conversa no WhatsApp
+      setTimeout(() => {
+        window.location.href = `https://wa.me/${SEU_NUMERO}?text=Aqui%20est%C3%A1%20o%20%C3%A1udio%20.opus%20pronto:`;
+      }, 1000);
     }
   </script>
 </body>

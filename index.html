@@ -1,170 +1,104 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Compartilhar Áudio Opus</title>
-  <style>
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
-    body { background-color: #0b141a; color: #e9edef; padding: 16px; display: flex; justify-content: center; }
-    .card { background: #111b21; padding: 20px; border-radius: 16px; width: 100%; max-width: 450px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
-    h2 { color: #00a884; margin-top: 0; text-align: center; font-size: 20px; }
-    
-    .btn-import { 
-      width: 100%; padding: 14px; background: #00a884; border: none; border-radius: 10px; 
-      color: #111b21; font-weight: bold; font-size: 15px; cursor: pointer; text-align: center; display: block; 
-    }
-    input[type="file"] { display: none; }
-
-    .subtitle { color: #8696a0; font-size: 13px; margin: 15px 0 10px 0; text-align: center; }
-
-    .audio-list { display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 4px; }
-    .audio-item { 
-      background: #202c33; padding: 12px; border-radius: 10px; border: 1px solid #2a3942; 
-      display: flex; flex-direction: column; gap: 8px;
-    }
-    .audio-header { display: flex; justify-content: space-between; align-items: center; }
-    .audio-name { font-weight: bold; font-size: 14px; color: #e9edef; word-break: break-all; }
-    .btn-rename { background: transparent; border: none; color: #34b7f1; font-size: 12px; cursor: pointer; text-decoration: underline; }
-
-    audio { width: 100%; height: 32px; }
-
-    .btn-send { 
-      background: #25d366; color: #fff; border: none; padding: 12px; border-radius: 8px; 
-      font-weight: bold; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
-      text-decoration: none;
-    }
-    .btn-send:active { opacity: 0.8; }
-
-    #status { margin-top: 15px; text-align: center; font-size: 13px; color: #00a884; font-weight: bold; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0f1a" />
+<title>Conversor MP3 → OPUS</title>
+<link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <div class="card">
-    <h2>🚀 Compartilhar Áudio Opus</h2>
-    
-    <label class="btn-import">
-      📂 Selecionar Áudio do Celular
-      <input type="file" id="audioInput" accept="audio/*" multiple onchange="carregarAudios(event)">
-    </label>
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <span>MP3</span>
+      <span class="arrow">→</span>
+      <span class="badge">OPUS</span>
+    </div>
+    <p>Converta seus áudios MP3 para o formato OPUS direto no navegador.
+       Rápido, gratuito e <b>sem enviar nada para servidores</b>.</p>
+  </header>
 
-    <div class="subtitle" id="totalAudios">Nenhum áudio carregado</div>
+  <main class="card">
+    <div class="drop" id="drop" role="button" tabindex="0" aria-label="Selecionar arquivo MP3">
+      <span class="icon" id="dropIcon">🎵</span>
+      <h3 id="dropTitle">Toque para escolher um MP3</h3>
+      <small id="dropSub">ou arraste e solte o arquivo aqui</small>
+      <div class="filename hidden" id="fileName"></div>
+      <div class="filesize hidden" id="fileSize"></div>
+    </div>
 
-    <div class="audio-list" id="audioList"></div>
+    <input type="file" id="fileInput" accept=".mp3,audio/mpeg,audio/*" class="hidden" />
 
-    <div id="status"></div>
-  </div>
+    <div class="row">
+      <div>
+        <label class="field" for="bitrate">Qualidade</label>
+        <select id="bitrate">
+          <option value="64">64 kbps — voz / podcast</option>
+          <option value="96" selected>96 kbps — recomendado</option>
+          <option value="128">128 kbps — alta</option>
+          <option value="160">160 kbps — muito alta</option>
+          <option value="192">192 kbps — máxima</option>
+        </select>
+      </div>
+      <div>
+        <label class="field" for="channels">Canais</label>
+        <select id="channels">
+          <option value="orig" selected>Manter original</option>
+          <option value="1">Mono (1 canal)</option>
+          <option value="2">Estéreo (2 canais)</option>
+        </select>
+      </div>
+    </div>
 
-  <script>
-    let listaArquivos = [];
-    const SEU_NUMERO = "5571991698042";
+    <button class="btn btn-primary" id="convertBtn" disabled>
+      <span class="spin" id="spin"></span>
+      <span id="convertLabel">Converter para OPUS</span>
+    </button>
 
-    function carregarAudios(event) {
-      const files = event.target.files;
-      if (!files.length) return;
+    <div class="progress-box" id="progressBox">
+      <div class="progress-head">
+        <span id="statusText">Preparando…</span>
+        <span class="pct" id="pctText">0%</span>
+      </div>
+      <div class="bar" id="bar"><i id="barFill"></i></div>
+    </div>
 
-      listaArquivos = Array.from(files).map((file, index) => {
-        let cleanName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-        cleanName = cleanName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]/g, "_");
+    <div class="result" id="result">
+      <h4>✅ Conversão concluída</h4>
+      <audio id="player" controls preload="metadata"></audio>
+      <div class="stats">
+        <span class="chip">Formato: <b>OPUS (.opus)</b></span>
+        <span class="chip" id="chipSize">Tamanho: <b>—</b></span>
+        <span class="chip good" id="chipSaved">Redução: <b>—</b></span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-ok" id="downloadBtn">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Baixar
+        </button>
+        <button class="btn btn-ghost" id="shareBtn">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Compartilhar
+        </button>
+      </div>
+      <button class="btn btn-ghost" id="resetBtn" style="margin-top:12px;">↺ Converter outro arquivo</button>
+    </div>
+  </main>
 
-        return {
-          id: index,
-          originalFile: file,
-          name: cleanName,
-          blobUrl: URL.createObjectURL(file)
-        };
-      });
+  <footer>
+    Tudo é processado <b>100% no seu dispositivo</b> — nenhum arquivo sai do seu aparelho.<br>
+    Motor: FFmpeg.wasm · Codificador: libopus
+  </footer>
+</div>
 
-      renderizarLista();
-    }
+<div class="toast" id="toast"></div>
 
-    function renderizarLista() {
-      const container = document.getElementById('audioList');
-      const totalText = document.getElementById('totalAudios');
-      container.innerHTML = '';
+<!-- FFmpeg.wasm 0.12.x (API nova) -->
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.7/dist/umd/ffmpeg.js"></script>
+<script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+<script src="script.js" defer></script>
 
-      totalText.innerText = `${listaArquivos.length} áudio(s) pronto(s)`;
-
-      listaArquivos.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'audio-item';
-
-        div.innerHTML = `
-          <div class="audio-header">
-            <span class="audio-name" id="title-${item.id}">🎵 ${item.name}.opus</span>
-            <button class="btn-rename" onclick="renomearAudio(${item.id})">✏️ Renomear</button>
-          </div>
-          <audio src="${item.blobUrl}" controls></audio>
-          <button class="btn-send" onclick="processarEnvio(${item.id})">
-            📲 Enviar no WhatsApp
-          </button>
-        `;
-
-        container.appendChild(div);
-      });
-    }
-
-    function renomearAudio(id) {
-      const item = listaArquivos.find(a => a.id === id);
-      if (!item) return;
-
-      const novoNome = prompt('Digite o novo nome do áudio:', item.name);
-      if (novoNome && novoNome.trim() !== '') {
-        item.name = novoNome.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]/g, "_");
-        document.getElementById(`title-${id}`).innerText = `🎵 ${item.name}.opus`;
-      }
-    }
-
-    async function processarEnvio(id) {
-      const item = listaArquivos.find(a => a.id === id);
-      const status = document.getElementById('status');
-      if (!item) return;
-
-      status.innerText = `Preparando "${item.name}.opus"...`;
-
-      try {
-        const arrayBuffer = await item.originalFile.arrayBuffer();
-        // Usa tipo MIME aceito nativamente pelo Android para compatibilidade
-        const blobOpus = new Blob([arrayBuffer], { type: 'audio/ogg' });
-        const finalFile = new File([blobOpus], `${item.name}.opus`, { type: 'audio/ogg' });
-
-        // Tenta o compartilhamento direto via sistema
-        if (navigator.canShare && navigator.canShare({ files: [finalFile] })) {
-          await navigator.share({
-            files: [finalFile],
-            title: `${item.name}.opus`
-          });
-          status.innerText = 'Compartilhado com sucesso!';
-        } else {
-          executarFallback(blobOpus, `${item.name}.opus`);
-        }
-      } catch (e) {
-        // Se o compartilhamento nativo falhar por causa do localhost, faz o fluxo de contingência
-        const arrayBuffer = await item.originalFile.arrayBuffer();
-        const blobOpus = new Blob([arrayBuffer], { type: 'audio/ogg' });
-        executarFallback(blobOpus, `${item.name}.opus`);
-      }
-    }
-
-    function executarFallback(blob, fileName) {
-      const status = document.getElementById('status');
-      
-      // 1. Baixa o arquivo .opus para o celular
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-
-      status.innerText = 'Áudio salvo nos Downloads! Abrindo WhatsApp...';
-
-      // 2. Redireciona direto para a sua conversa no WhatsApp
-      setTimeout(() => {
-        window.location.href = `https://wa.me/${SEU_NUMERO}?text=Aqui%20est%C3%A1%20o%20%C3%A1udio%20.opus%20pronto:`;
-      }, 1000);
-    }
-  </script>
 </body>
 </html>

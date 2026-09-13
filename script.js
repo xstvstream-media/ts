@@ -1,7 +1,6 @@
 (function () {
   'use strict';
 
-  /* ---------------- Elementos ---------------- */
   const $ = (id) => document.getElementById(id);
 
   const drop        = $('drop');
@@ -35,15 +34,11 @@
 
   const toastEl     = $('toast');
 
-  /* ---------------- Estado ---------------- */
   let selectedFile = null;
   let outputBlob   = null;
   let outputName   = '';
   let outUrl       = null;
   let busy         = false;
-
-  let ffmpeg = null;
-  let ffmpegLoaded = false;
 
   /* ---------------- Helpers ---------------- */
   function formatBytes(bytes) {
@@ -91,6 +86,23 @@
     convertLbl.textContent = label || (state ? 'Convertendo…' : 'Converter para OPUS');
   }
 
+  /* ---------------- Detectar suporte a Opus ---------------- */
+  function getSupportedOpusMime() {
+    if (typeof MediaRecorder === 'undefined') return null;
+    const candidates = [
+      'audio/webm;codecs=opus',
+      'audio/ogg;codecs=opus',
+      'audio/webm',
+      'audio/ogg',
+    ];
+    for (const t of candidates) {
+      try {
+        if (MediaRecorder.isTypeSupported(t)) return t;
+      } catch (e) {}
+    }
+    return null;
+  }
+
   /* ---------------- Seleção de arquivo ---------------- */
   function isAudio(file) {
     if (!file) return false;
@@ -104,7 +116,6 @@
       toast('Escolha um arquivo de áudio válido.', true);
       return;
     }
-
     selectedFile = file;
 
     drop.classList.add('has-file');
@@ -133,7 +144,6 @@
 
   /* ---------------- Drag & Drop ---------------- */
   drop.addEventListener('click', () => fileInput.click());
-
   drop.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
   });
@@ -167,134 +177,161 @@
     window.addEventListener(ev, (e) => e.preventDefault())
   );
 
-  /* ---------------- Carregar FFmpeg (API 0.12.x) ---------------- */
-  async function loadFFmpeg() {
-    if (ffmpegLoaded && ffmpeg) return ffmpeg;
+  /* ---------------- CONVERSÃO (MediaRecorder + Opus nativo) ---------------- */
+  async function convertToOpus(file, bitrateKbps) {
+    const mimeType = getSupportedOpusMime();
+    if (!mimeType) {
+      throw new Error('Seu navegador não suporta codificação Opus.');
+    }
 
-    const { FFmpeg } = window.FFmpegWASM;
-    const { toBlobURL, fetchFile } = window.FFmpegUtil;
+    // 1) Decodifica o MP3 para PCM via Web Audio API
+    const arrayBuffer = await file.arrayBuffer();
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioCtx();
 
-    ffmpeg = new FFmpeg();
+    // garante contexto ativo (mobile exige gesto — o clique no botão já é um)
+    if (audioCtx.state === 'suspended') {
+      try { await audioCtx.resume(); } catch (e) {}
+    }
 
-    // Logs (opcional)
-    ffmpeg.on('log', ({ message }) => {
-      console.log('[ffmpeg]', message);
-    });
+    let audioBuffer;
+    try {
+      audioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+    } catch (err) {
+      audioCtx.close();
+      throw new Error('Não foi possível decodificar o áudio. O arquivo pode estar corrompido.');
+    }
 
-    ffmpeg.on('progress', ({ progress }) => {
-      if (typeof progress === 'number' && isFinite(progress) && progress > 0) {
-        setProgress(progress * 100, 'Convertendo áudio…');
+    const duration = audioBuffer.duration;
+
+    // 2) Cria destino de stream para capturar o áudio tocado
+    const dest = audioCtx.createMediaStreamDestination();
+    const source = audioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(dest);
+
+    // 3) Ajustar canais se necessário
+    const wantChannels = channelsSel.value;
+    // Aplicamos via CanalMerger se o usuário quiser forçar mono
+    if (wantChannels === '1' && audioBuffer.numberOfChannels > 1) {
+      // reconecta mixando para mono
+      const merger = audioCtx.createChannelMerger(1);
+      const gain = audioCtx.createGain();
+      gain.gain.value = 1 / audioBuffer.numberOfChannels;
+      source.disconnect();
+      source.connect(gain);
+      gain.connect(merger, 0, 0);
+      merger.connect(dest);
+    } else if (wantChannels === '2' && audioBuffer.numberOfChannels === 1) {
+      // duplica mono para estéreo
+      const splitter = audioCtx.createChannelSplitter(1);
+      const merger = audioCtx.createChannelMerger(2);
+      source.disconnect();
+      source.connect(splitter);
+      splitter.connect(merger, 0, 0);
+      splitter.connect(merger, 0, 1);
+      merger.connect(dest);
+    }
+
+    // 4) Configura o MediaRecorder
+    const options = { mimeType };
+    const bps = parseInt(bitrateKbps, 10) * 1000;
+    if (bps) options.audioBitsPerSecond = bps;
+
+    let recorder;
+    try {
+      recorder = new MediaRecorder(dest.stream, options);
+    } catch (err) {
+      // fallback sem bitrate explícito
+      recorder = new MediaRecorder(dest.stream, { mimeType });
+    }
+
+    const chunks = [];
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) chunks.push(e.data);
+    };
+
+    return new Promise((resolve, reject) => {
+      let stopped = false;
+
+      const cleanup = () => {
+        try { audioCtx.close(); } catch (e) {}
+      };
+
+      recorder.onstop = () => {
+        cleanup();
+        const blob = new Blob(chunks, { type: mimeType });
+        resolve(blob);
+      };
+
+      recorder.onerror = (e) => {
+        cleanup();
+        reject(e.error || new Error('Erro na gravação'));
+      };
+
+      // Progresso baseado no tempo real de reprodução
+      const startedAt = audioCtx.currentTime;
+      const progressTimer = setInterval(() => {
+        const elapsed = audioCtx.currentTime - startedAt;
+        const pct = Math.min(99, (elapsed / duration) * 100);
+        setProgress(pct, 'Convertendo em Opus…');
+      }, 150);
+
+      // Encerramento natural
+      source.onended = () => {
+        if (stopped) return;
+        stopped = true;
+        clearInterval(progressTimer);
+        // pequeno delay para o MediaRecorder drenar
+        setTimeout(() => {
+          try { recorder.stop(); } catch (e) { cleanup(); reject(e); }
+        }, 200);
+      };
+
+      // Start
+      try {
+        recorder.start(100); // coleta chunks a cada 100ms
+      } catch (err) {
+        clearInterval(progressTimer);
+        cleanup();
+        return reject(err);
       }
+
+      source.start(0);
     });
-
-    setIndeterminate('Baixando motor de conversão…');
-
-    // ⚠️ ESSENCIAL: baixar o core como Blob URL para evitar erros de CORS/caminho
-    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-
-    const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
-    const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
-
-    setIndeterminate('Inicializando motor…');
-
-    await ffmpeg.load({
-      coreURL,
-      wasmURL,
-    });
-
-    ffmpegLoaded = true;
-    return ffmpeg;
   }
 
-  /* ---------------- Conversão ---------------- */
+  /* ---------------- Ação de converter ---------------- */
   async function convert() {
     if (!selectedFile || busy) return;
 
-    setBusy(true, 'Carregando motor…');
-    clearResult();
-    setIndeterminate('Carregando motor de conversão…');
-
-    let ff;
-    try {
-      ff = await loadFFmpeg();
-    } catch (err) {
-      console.error(err);
-      hideProgress();
-      setBusy(false);
-      toast('Falha ao carregar o motor: ' + (err.message || err), true);
+    if (!getSupportedOpusMime()) {
+      toast('Este navegador não suporta Opus. Use Chrome, Edge ou Firefox.', true);
       return;
     }
 
-    const { fetchFile } = window.FFmpegUtil;
-    const bitrate  = bitrateSel.value;
-    const channels = channelsSel.value;
+    setBusy(true, 'Convertendo…');
+    clearResult();
+    setProgress(0, 'Preparando áudio…');
 
     try {
-      setIndeterminate('Lendo arquivo…');
-      convertLbl.textContent = 'Convertendo…';
+      const blob = await convertToOpus(selectedFile, bitrateSel.value);
 
-      // ✅ API 0.12.x: writeFile / exec / readFile
-      await ff.writeFile('input.mp3', await fetchFile(selectedFile));
+      if (!blob || !blob.size) throw new Error('Saída vazia');
 
-      setProgress(1, 'Convertendo áudio…');
+      outputBlob = blob;
 
-      const args = [
-        '-i', 'input.mp3',
-        '-vn',
-        '-map', '0:a:0',
-        '-c:a', 'libopus',
-        '-b:a', bitrate + 'k',
-        '-vbr', 'on',
-        '-compression_level', '10',
-        '-application', 'audio'
-      ];
-
-      if (channels !== 'orig') {
-        args.push('-ac', channels);
-      }
-
-      args.push('output.opus');
-
-      let ran = false;
-      try {
-        await ff.exec(args);
-        ran = true;
-      } catch (e) {
-        console.warn('libopus indisponível, tentando encoder nativo…', e);
-      }
-
-      if (!ran) {
-        const args2 = [
-          '-i', 'input.mp3',
-          '-vn', '-map', '0:a:0',
-          '-c:a', 'opus',
-          '-strict', '-2',
-          '-b:a', bitrate + 'k'
-        ];
-        if (channels !== 'orig') args2.push('-ac', channels);
-        args2.push('output.opus');
-        await ff.exec(args2);
-      }
-
-      setProgress(96, 'Finalizando…');
-
-      // ✅ API 0.12.x: readFile retorna Uint8Array
-      const data = await ff.readFile('output.opus');
-
-      try { await ff.deleteFile('input.mp3'); } catch (e) {}
-      try { await ff.deleteFile('output.opus'); } catch (e) {}
-
-      if (!data || !data.length) throw new Error('Saída vazia');
-
-      outputBlob = new Blob([data.buffer], { type: 'audio/ogg' });
-
+      // Extensão coerente com o mime
       const baseName = selectedFile.name.replace(/\.[^.]+$/, '') || 'audio';
-      outputName = baseName + '.opus';
+      const ext = blob.type.indexOf('ogg') !== -1 ? '.opus' : '.webm';
+      outputName = baseName + ext;
 
+      // Player
       if (outUrl) URL.revokeObjectURL(outUrl);
       outUrl = URL.createObjectURL(outputBlob);
       player.src = outUrl;
 
+      // Estatísticas
       const before = selectedFile.size;
       const after  = outputBlob.size;
       chipSize.innerHTML = 'Tamanho: <b>' + formatBytes(after) + '</b>';
@@ -308,17 +345,13 @@
 
       setProgress(100, 'Concluído!');
       result.classList.add('on');
-
-      setTimeout(() => {
-        result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }, 120);
-
+      setTimeout(() => result.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 120);
       toast('Conversão concluída! 🎉');
 
     } catch (err) {
       console.error(err);
       hideProgress();
-      toast('Erro na conversão: ' + (err.message || err), true);
+      toast(err.message || 'Erro ao converter.', true);
     } finally {
       setBusy(false);
     }
@@ -339,14 +372,15 @@
 
   /* ---------------- Compartilhar ---------------- */
   shareBtn.addEventListener('click', async () => {
-    const shareText = 'Converti um áudio para OPUS com este conversor online 🎧';
+    const shareText = 'Converti um áudio para Opus com este conversor 🎧';
     const shareUrl  = location.href;
 
+    // 1) Compartilhar o ARQUIVO (Android Chrome / Edge / iOS Safari)
     if (outputBlob && navigator.canShare) {
       try {
-        const file = new File([outputBlob], outputName, { type: 'audio/ogg' });
+        const file = new File([outputBlob], outputName, { type: outputBlob.type });
         if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: 'Áudio em OPUS', text: shareText });
+          await navigator.share({ files: [file], title: 'Áudio Opus', text: shareText });
           return;
         }
       } catch (err) {
@@ -355,20 +389,22 @@
       }
     }
 
+    // 2) Compartilhar o LINK
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Conversor MP3 → OPUS', text: shareText, url: shareUrl });
+        await navigator.share({ title: 'Conversor MP3 → Opus', text: shareText, url: shareUrl });
         return;
       } catch (err) {
         if (err && err.name === 'AbortError') return;
       }
     }
 
+    // 3) Fallback: copiar
     try {
       await navigator.clipboard.writeText(shareUrl);
-      toast('Link copiado para a área de transferência!');
+      toast('Link copiado!');
     } catch (e) {
-      toast('Compartilhamento não suportado neste navegador.', true);
+      toast('Compartilhamento não suportado.', true);
     }
   });
 
@@ -390,15 +426,7 @@
 
     convertBtn.disabled = true;
     convertLbl.textContent = 'Converter para OPUS';
-
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
-
-  window.addEventListener('load', () => {
-    if (!window.FFmpegWASM || !window.FFmpegUtil) {
-      toast('Não foi possível carregar as bibliotecas do FFmpeg.', true);
-      convertBtn.disabled = true;
-    }
   });
 
 })();

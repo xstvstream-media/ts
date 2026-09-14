@@ -2,172 +2,355 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guia Rápido: Modificando Apps</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Guia Pro: Modificação de Apps</title>
     <style>
         :root {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --text-main: #e0e0e0;
-            --text-muted: #a0a0a0;
-            --accent: #bb86fc;
-            --accent-green: #03dac6;
-            --warning: #cf6679;
+            --bg-color: #0f0f13;
+            --surface: #1a1a24;
+            --surface-light: #262636;
+            --text-main: #ffffff;
+            --text-muted: #a0a0b8;
+            --accent-blue: #4a90e2;
+            --accent-green: #2ecc71;
+            --accent-purple: #9b59b6;
+            --accent-orange: #e67e22;
+            --accent-red: #e74c3c;
+            --nav-height: 70px;
         }
+        
+        * {
+            box-sizing: border-box;
+            scroll-behavior: smooth;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
             margin: 0;
-            padding: 20px;
+            padding: 0 0 var(--nav-height) 0;
             line-height: 1.6;
+            -webkit-tap-highlight-color: transparent;
         }
+
+        header {
+            background: linear-gradient(135deg, var(--surface) 0%, var(--bg-color) 100%);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--surface-light);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
         h1 {
-            color: var(--accent);
-            text-align: center;
-            font-size: 1.5rem;
-            margin-bottom: 5px;
+            margin: 0;
+            font-size: 1.4rem;
+            background: linear-gradient(to right, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            letter-spacing: 0.5px;
         }
+
         .subtitle {
-            text-align: center;
             color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-bottom: 25px;
+            font-size: 0.8rem;
+            margin-top: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-        .card {
-            background-color: var(--card-bg);
-            border-radius: 12px;
+
+        .content {
             padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            border-left: 4px solid var(--accent);
+            max-width: 800px;
+            margin: 0 auto;
         }
-        .card.warning {
-            border-left-color: var(--warning);
+
+        .card {
+            background-color: var(--surface);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            border: 1px solid var(--surface-light);
+            transition: transform 0.2s ease;
         }
-        .card.success {
-            border-left-color: var(--accent-green);
+
+        .card:active {
+            transform: scale(0.98);
         }
-        .card h2 {
-            font-size: 1.1rem;
-            margin-top: 0;
-            color: var(--accent);
+
+        .card-header {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
+            margin-bottom: 15px;
         }
-        .card.warning h2 { color: var(--warning); }
-        .card.success h2 { color: var(--accent-green); }
-        
+
+        .icon {
+            font-size: 1.8rem;
+            background: var(--surface-light);
+            padding: 10px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card h2 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--text-main);
+        }
+
+        .badge {
+            font-size: 0.7rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-left: auto;
+        }
+
+        .badge.easy { background-color: rgba(46, 204, 113, 0.2); color: var(--accent-green); border: 1px solid var(--accent-green); }
+        .badge.medium { background-color: rgba(230, 126, 34, 0.2); color: var(--accent-orange); border: 1px solid var(--accent-orange); }
+        .badge.hard { background-color: rgba(231, 76, 60, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); }
+        .badge.tool { background-color: rgba(74, 144, 226, 0.2); color: var(--accent-blue); border: 1px solid var(--accent-blue); }
+
         code {
             background-color: #000;
             color: var(--accent-green);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 0.9rem;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            word-break: break-all;
         }
+
         .step-box {
-            background-color: #2c2c2c;
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 10px;
+            background-color: var(--surface-light);
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 12px;
             font-size: 0.9rem;
+            border-left: 4px solid var(--accent-blue);
         }
+
+        .step-box.warning-border { border-left-color: var(--accent-red); }
+        .step-box.success-border { border-left-color: var(--accent-green); }
+
         ul {
             padding-left: 20px;
-            margin-bottom: 0;
+            margin: 10px 0;
         }
+
         li {
             margin-bottom: 8px;
+            color: var(--text-muted);
         }
+
+        strong {
+            color: var(--text-main);
+        }
+
+        /* Navegação Inferior (App-like) */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: var(--nav-height);
+            background-color: var(--surface);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-top: 1px solid var(--surface-light);
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 0.65rem;
+            gap: 4px;
+            width: 60px;
+            transition: color 0.2s ease;
+        }
+
+        .nav-item span {
+            font-size: 1.4rem;
+        }
+
+        .nav-item:active, .nav-item.active {
+            color: var(--accent-blue);
+        }
+
         .disclaimer {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: var(--text-muted);
             text-align: center;
             margin-top: 30px;
-            font-style: italic;
+            padding: 15px;
+            background-color: var(--surface);
+            border-radius: 12px;
+            border: 1px dashed var(--surface-light);
         }
     </style>
 </head>
 <body>
 
-    <h1>🛠️ Guia do Modificador</h1>
-    <div class="subtitle">Como remover anúncios e desbloquear o Premium</div>
+    <header>
+        <h1>Guia Pro de Modificação</h1>
+        <div class="subtitle">Engenharia Reversa de Apps Android</div>
+    </header>
 
-    <div class="card">
-        <h2>🛠️ Ferramentas Necessárias</h2>
-        <ul>
-            <li><strong>MT Manager / Dex Editor Plus:</strong> Para mexer no código (Smali) e remover anúncios.</li>
-            <li><strong>Lucky Patcher:</strong> Para desbloquear o Premium (a forma mais fácil).</li>
-        </ul>
-    </div>
+    <div class="content">
 
-    <div class="card success">
-        <h2>⭐ Regra de Ouro: Assinar o APK</h2>
-        <p>Sempre que você modificar qualquer coisa no MT Manager, você <strong>precisa assinar o APK de novo</strong>, senão o Android não deixa instalar.</p>
-        <div class="step-box">
-            <strong>No MT Manager:</strong> Ao sair, ele pergunta se quer assinar. Diga Sim. Ou vá no menu do APK > <code>Assinar</code>. <br>
-            <strong>IMPORTANTE:</strong> Marque sempre a opção <em>"Remover Verificação de Assinatura"</em> (Signature Kill). Isso impede que o app feche sozinho após ser modificado.
+        <!-- Ferramentas -->
+        <div class="card" id="ferramentas">
+            <div class="card-header">
+                <div class="icon">🛠️</div>
+                <h2>Ferramentas Essenciais</h2>
+                <div class="badge tool">Início</div>
+            </div>
+            <ul>
+                <li><strong>MT Manager / Dex Editor Plus:</strong> Para mexer no código (Smali), remover anúncios e assinar APKs.</li>
+                <li><strong>Lucky Patcher:</strong> Para desbloquear o Premium (a forma mais fácil).</li>
+                <li><strong>AntiSplit M:</strong> Para juntar arquivos divididos da Play Store.</li>
+            </ul>
         </div>
-    </div>
 
-    <div class="card">
-        <h2>📺 Passo 1: Remover Propagandas (Anúncios)</h2>
-        <p>Use o MT Manager para isso. A propaganda está no código Smali.</p>
-        <div class="step-box">
-            <strong>Como fazer:</strong><br>
-            1. Abra o APK no MT Manager e vá em <code>Dex</code>.<br>
-            2. Pesquise por termos como: <code>showAd</code>, <code>loadAd</code>, <code>AdView</code>, <code>Interstitial</code>.<br>
-            3. Abra o método que encontrar. Você verá um monte de código.<br>
-            4. Apague tudo o que tem dentro e substitua por: <code>return-void</code>.<br>
-            <em>Isso faz o app "pular" a propaganda.</em>
+        <!-- AntiSplit M -->
+        <div class="card" id="antislpit">
+            <div class="card-header">
+                <div class="icon">🧩</div>
+                <h2>AntiSplit M (Juntar APKs)</h2>
+                <div class="badge tool">Ferramenta</div>
+            </div>
+            <p>O que é? Quando você baixa um app pela Play Store (ou sites como APKMirror), ele vem dividido em vários pedaços (<code>.apks</code> ou <code>.xapk</code>). Você não consegue instalar ou modificar isso facilmente.</p>
+            <div class="step-box">
+                <strong>O que o AntiSplit M faz:</strong><br>
+                Ele pega todos esses pedaços e transforma em um único arquivo <code>.apk</code> normal e instalável.
+            </div>
+            <div class="step-box success-border">
+                <strong>Como usar:</strong><br>
+                1. Abra o arquivo <code>.apks</code> ou <code>.xapk</code> no AntiSplit M.<br>
+                2. Clique em <code>Save</code> (Salvar) ou <code>Merge</code>.<br>
+                3. Ele vai gerar um APK único. <br>
+                4. Agora você pode jogar esse APK novo no MT Manager ou Lucky Patcher!
+            </div>
         </div>
-    </div>
 
-    <div class="card success">
-        <h2>👑 Passo 2: Desbloquear Premium (Método Fácil)</h2>
-        <p>Não tente mexer no código para o Premium. Use o <strong>Lucky Patcher</strong>.</p>
-        <div class="step-box">
-            <strong>Como fazer:</strong><br>
-            1. Abra o Lucky Patcher e ache o app.<br>
-            2. Toque em <code>Menu de patches</code> (ou Patches Personalizados).<br>
-            3. Procure por nomes como <code>gnom_Pro</code> ou <code>ZONE_ADRIAN</code> (são patches feitos por especialistas).<br>
-            4. Marque a caixinha do patch e clique em <code>Patchear</code>.<br>
-            5. <strong>NÃO</strong> marque as opções de "Burlar verificação" na tela final do Lucky Patcher, pois o patch já faz isso sozinho.<br>
-            6. Recompile, instale e teste a compra. O Lucky Patcher vai fingir que você pagou!
+        <!-- Remover Anúncios -->
+        <div class="card" id="ads">
+            <div class="card-header">
+                <div class="icon">📺</div>
+                <h2>Remover Propagandas</h2>
+                <div class="badge medium">Médio</div>
+            </div>
+            <p>Use o MT Manager para isso. A propaganda está no código Smali.</p>
+            <div class="step-box">
+                <strong>Como fazer:</strong><br>
+                1. Abra o APK no MT Manager e vá em <code>Dex</code>.<br>
+                2. Pesquise por termos como: <code>showAd</code>, <code>loadAd</code>, <code>AdView</code>, <code>Interstitial</code>.<br>
+                3. Abra o método que encontrar.<br>
+                4. Apague tudo o que tem dentro e substitua por: <code>return-void</code>.<br>
+                <em>Isso faz o app "pular" a propaganda.</em>
+            </div>
         </div>
-    </div>
 
-    <div class="card warning">
-        <h2>⚠️ Passo 3: Desbloquear Premium (Método Difícil - MT Manager)</h2>
-        <p>Use isso apenas se o Lucky Patcher falhar e o app for simples.</p>
-        <div class="step-box">
-            <strong>Como fazer:</strong><br>
-            1. No MT Manager, pesquise por: <code>isPremium</code>, <code>isPro</code>, <code>isVip</code>, <code>hasPurchased</code>.<br>
-            2. Procure por métodos que terminam com <code>()Z</code> (Z significa que retorna True ou False).<br>
-            3. O código vai se parecer com isso:<br>
-            <code>const/4 v0, 0x0</code> <br>
-            <code>return v0</code><br>
-            4. Mude o <code>0x0</code> (Falso) para <code>0x1</code> (Verdadeiro).<br>
-            <code>const/4 v0, 0x1</code><br>
-            <code>return v0</code><br>
-            <em>Isso força o app a achar que você é VIP.</em>
+        <!-- Premium Fácil -->
+        <div class="card" id="premium-facil">
+            <div class="card-header">
+                <div class="icon">👑</div>
+                <h2>Desbloquear Premium (Fácil)</h2>
+                <div class="badge easy">Fácil</div>
+            </div>
+            <p>Não tente mexer no código para o Premium. Use o <strong>Lucky Patcher</strong>.</p>
+            <div class="step-box success-border">
+                <strong>Como fazer:</strong><br>
+                1. Abra o Lucky Patcher e ache o app.<br>
+                2. Toque em <code>Menu de patches</code> (ou Patches Personalizados).<br>
+                3. Procure por nomes como <code>gnom_Pro</code> ou <code>ZONE_ADRIAN</code> (são patches feitos por especialistas).<br>
+                4. Marque a caixinha do patch e clique em <code>Patchear</code>.<br>
+                5. <strong>NÃO</strong> marque as opções de "Burlar verificação" na tela final do Lucky Patcher.<br>
+                6. Recompile, instale e teste a compra.
+            </div>
         </div>
+
+        <!-- Premium Difícil -->
+        <div class="card" id="premium-dificil">
+            <div class="card-header">
+                <div class="icon">⚠️</div>
+                <h2>Desbloquear Premium (Difícil)</h2>
+                <div class="badge hard">Avançado</div>
+            </div>
+            <p>Use isso apenas se o Lucky Patcher falhar e o app for simples.</p>
+            <div class="step-box warning-border">
+                <strong>Como fazer:</strong><br>
+                1. No MT Manager, pesquise por: <code>isPremium</code>, <code>isPro</code>, <code>isVip</code>.<br>
+                2. Procure por métodos que terminam com <code>()Z</code>.<br>
+                3. O código vai se parecer com isso:<br>
+                <code>const/4 v0, 0x0</code> <br>
+                <code>return v0</code><br>
+                4. Mude o <code>0x0</code> (Falso) para <code>0x1</code> (Verdadeiro).<br>
+                <code>const/4 v0, 0x1</code><br>
+                <code>return v0</code><br>
+                <em>Isso força o app a achar que você é VIP.</em>
+            </div>
+        </div>
+
+        <!-- Regra de Ouro -->
+        <div class="card" id="regra-ouro">
+            <div class="card-header">
+                <div class="icon">⭐</div>
+                <h2>Regra de Ouro: Assinar o APK</h2>
+                <div class="badge tool">Obrigatório</div>
+            </div>
+            <p>Sempre que você modificar qualquer coisa no MT Manager, você <strong>precisa assinar o APK de novo</strong>.</p>
+            <div class="step-box">
+                <strong>No MT Manager:</strong> Ao sair, ele pergunta se quer assinar. Diga Sim.<br>
+                <strong>IMPORTANTE:</strong> Marque sempre a opção <em>"Remover Verificação de Assinatura"</em> (Signature Kill).
+            </div>
+        </div>
+
+        <div class="disclaimer">
+            Este guia é para fins educacionais e de aprendizado em engenharia reversa. Sempre apoie os desenvolvedores comprando a versão original se puder.
+        </div>
+
     </div>
 
-    <div class="card warning">
-        <h2>🚫 O que NUNCA fazer</h2>
-        <ul>
-            <li><strong>Não atualize pelo Google Play:</strong> Se atualizar, o app original volta e você perde o mod.</li>
-            <li><strong>Não desative o Google Play Protect:</strong> Você pode precisar desativá-lo temporariamente para instalar o APK modificado, mas ligue-o de novo depois.</li>
-            <li><strong>Não compartilhe com desconhecidos:</strong> Modificar apps é para uso pessoal. Distribuir pirataria pode dar problema.</li>
-        </ul>
-    </div>
-
-    <div class="disclaimer">
-        Este guia é para fins educacionais e de aprendizado em engenharia reversa. Sempre apoie os desenvolvedores comprando a versão original se puder.
-    </div>
+    <!-- Botões de Navegação (Estilo App) -->
+    <nav class="bottom-nav">
+        <a href="#ferramentas" class="nav-item">
+            <span>🛠️</span>
+            Ferramentas
+        </a>
+        <a href="#antislpit" class="nav-item">
+            <span>🧩</span>
+            AntiSplit
+        </a>
+        <a href="#ads" class="nav-item">
+            <span>📺</span>
+            Ads
+        </a>
+        <a href="#premium-facil" class="nav-item">
+            <span>👑</span>
+            Premium
+        </a>
+        <a href="#premium-dificil" class="nav-item">
+            <span>⚠️</span>
+            Avançado
+        </a>
+    </nav>
 
 </body>
 </html>

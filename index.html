@@ -1,102 +1,173 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0b0f1a" />
-<title>Conversor MP3 → OPUS</title>
-<link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guia Rápido: Modificando Apps</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --accent: #bb86fc;
+            --accent-green: #03dac6;
+            --warning: #cf6679;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: var(--accent);
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 25px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border-left: 4px solid var(--accent);
+        }
+        .card.warning {
+            border-left-color: var(--warning);
+        }
+        .card.success {
+            border-left-color: var(--accent-green);
+        }
+        .card h2 {
+            font-size: 1.1rem;
+            margin-top: 0;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card.warning h2 { color: var(--warning); }
+        .card.success h2 { color: var(--accent-green); }
+        
+        code {
+            background-color: #000;
+            color: var(--accent-green);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        .step-box {
+            background-color: #2c2c2c;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+        ul {
+            padding-left: 20px;
+            margin-bottom: 0;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .disclaimer {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 30px;
+            font-style: italic;
+        }
+    </style>
 </head>
 <body>
 
-<div class="wrap">
-  <header>
-    <div class="logo">
-      <span>MP3</span>
-      <span class="arrow">→</span>
-      <span class="badge">OPUS</span>
-    </div>
-    <p>Converta seus áudios MP3 para o formato OPUS direto no navegador.
-       Rápido, gratuito e <b>sem enviar nada para servidores</b>.</p>
-  </header>
+    <h1>🛠️ Guia do Modificador</h1>
+    <div class="subtitle">Como remover anúncios e desbloquear o Premium</div>
 
-  <main class="card">
-    <div class="drop" id="drop" role="button" tabindex="0" aria-label="Selecionar arquivo MP3">
-      <span class="icon" id="dropIcon">🎵</span>
-      <h3 id="dropTitle">Toque para escolher um MP3</h3>
-      <small id="dropSub">ou arraste e solte o arquivo aqui</small>
-      <div class="filename hidden" id="fileName"></div>
-      <div class="filesize hidden" id="fileSize"></div>
+    <div class="card">
+        <h2>🛠️ Ferramentas Necessárias</h2>
+        <ul>
+            <li><strong>MT Manager / Dex Editor Plus:</strong> Para mexer no código (Smali) e remover anúncios.</li>
+            <li><strong>Lucky Patcher:</strong> Para desbloquear o Premium (a forma mais fácil).</li>
+        </ul>
     </div>
 
-    <input type="file" id="fileInput" accept=".mp3,audio/mpeg,audio/*" class="hidden" />
-
-    <div class="row">
-      <div>
-        <label class="field" for="bitrate">Qualidade</label>
-        <select id="bitrate">
-          <option value="64">64 kbps — voz / podcast</option>
-          <option value="96" selected>96 kbps — recomendado</option>
-          <option value="128">128 kbps — alta</option>
-          <option value="160">160 kbps — muito alta</option>
-          <option value="192">192 kbps — máxima</option>
-        </select>
-      </div>
-      <div>
-        <label class="field" for="channels">Canais</label>
-        <select id="channels">
-          <option value="orig" selected>Manter original</option>
-          <option value="1">Mono (1 canal)</option>
-          <option value="2">Estéreo (2 canais)</option>
-        </select>
-      </div>
+    <div class="card success">
+        <h2>⭐ Regra de Ouro: Assinar o APK</h2>
+        <p>Sempre que você modificar qualquer coisa no MT Manager, você <strong>precisa assinar o APK de novo</strong>, senão o Android não deixa instalar.</p>
+        <div class="step-box">
+            <strong>No MT Manager:</strong> Ao sair, ele pergunta se quer assinar. Diga Sim. Ou vá no menu do APK > <code>Assinar</code>. <br>
+            <strong>IMPORTANTE:</strong> Marque sempre a opção <em>"Remover Verificação de Assinatura"</em> (Signature Kill). Isso impede que o app feche sozinho após ser modificado.
+        </div>
     </div>
 
-    <button class="btn btn-primary" id="convertBtn" disabled>
-      <span class="spin" id="spin"></span>
-      <span id="convertLabel">Converter para OPUS</span>
-    </button>
-
-    <div class="progress-box" id="progressBox">
-      <div class="progress-head">
-        <span id="statusText">Preparando…</span>
-        <span class="pct" id="pctText">0%</span>
-      </div>
-      <div class="bar" id="bar"><i id="barFill"></i></div>
+    <div class="card">
+        <h2>📺 Passo 1: Remover Propagandas (Anúncios)</h2>
+        <p>Use o MT Manager para isso. A propaganda está no código Smali.</p>
+        <div class="step-box">
+            <strong>Como fazer:</strong><br>
+            1. Abra o APK no MT Manager e vá em <code>Dex</code>.<br>
+            2. Pesquise por termos como: <code>showAd</code>, <code>loadAd</code>, <code>AdView</code>, <code>Interstitial</code>.<br>
+            3. Abra o método que encontrar. Você verá um monte de código.<br>
+            4. Apague tudo o que tem dentro e substitua por: <code>return-void</code>.<br>
+            <em>Isso faz o app "pular" a propaganda.</em>
+        </div>
     </div>
 
-    <div class="result" id="result">
-      <h4>✅ Conversão concluída</h4>
-      <audio id="player" controls preload="metadata"></audio>
-      <div class="stats">
-        <span class="chip">Formato: <b>OPUS (.opus)</b></span>
-        <span class="chip" id="chipSize">Tamanho: <b>—</b></span>
-        <span class="chip good" id="chipSaved">Redução: <b>—</b></span>
-      </div>
-      <div class="actions">
-        <button class="btn btn-ok" id="downloadBtn">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Baixar
-        </button>
-        <button class="btn btn-ghost" id="shareBtn">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-          Compartilhar
-        </button>
-      </div>
-      <button class="btn btn-ghost" id="resetBtn" style="margin-top:12px;">↺ Converter outro arquivo</button>
+    <div class="card success">
+        <h2>👑 Passo 2: Desbloquear Premium (Método Fácil)</h2>
+        <p>Não tente mexer no código para o Premium. Use o <strong>Lucky Patcher</strong>.</p>
+        <div class="step-box">
+            <strong>Como fazer:</strong><br>
+            1. Abra o Lucky Patcher e ache o app.<br>
+            2. Toque em <code>Menu de patches</code> (ou Patches Personalizados).<br>
+            3. Procure por nomes como <code>gnom_Pro</code> ou <code>ZONE_ADRIAN</code> (são patches feitos por especialistas).<br>
+            4. Marque a caixinha do patch e clique em <code>Patchear</code>.<br>
+            5. <strong>NÃO</strong> marque as opções de "Burlar verificação" na tela final do Lucky Patcher, pois o patch já faz isso sozinho.<br>
+            6. Recompile, instale e teste a compra. O Lucky Patcher vai fingir que você pagou!
+        </div>
     </div>
-  </main>
 
-  <footer>
-    Tudo é processado <b>100% no seu dispositivo</b> — nenhum arquivo sai do seu aparelho.<br>
-    Motor: FFmpeg.wasm · Codificador: libopus
-  </footer>
-</div>
+    <div class="card warning">
+        <h2>⚠️ Passo 3: Desbloquear Premium (Método Difícil - MT Manager)</h2>
+        <p>Use isso apenas se o Lucky Patcher falhar e o app for simples.</p>
+        <div class="step-box">
+            <strong>Como fazer:</strong><br>
+            1. No MT Manager, pesquise por: <code>isPremium</code>, <code>isPro</code>, <code>isVip</code>, <code>hasPurchased</code>.<br>
+            2. Procure por métodos que terminam com <code>()Z</code> (Z significa que retorna True ou False).<br>
+            3. O código vai se parecer com isso:<br>
+            <code>const/4 v0, 0x0</code> <br>
+            <code>return v0</code><br>
+            4. Mude o <code>0x0</code> (Falso) para <code>0x1</code> (Verdadeiro).<br>
+            <code>const/4 v0, 0x1</code><br>
+            <code>return v0</code><br>
+            <em>Isso força o app a achar que você é VIP.</em>
+        </div>
+    </div>
 
-<div class="toast" id="toast"></div>
+    <div class="card warning">
+        <h2>🚫 O que NUNCA fazer</h2>
+        <ul>
+            <li><strong>Não atualize pelo Google Play:</strong> Se atualizar, o app original volta e você perde o mod.</li>
+            <li><strong>Não desative o Google Play Protect:</strong> Você pode precisar desativá-lo temporariamente para instalar o APK modificado, mas ligue-o de novo depois.</li>
+            <li><strong>Não compartilhe com desconhecidos:</strong> Modificar apps é para uso pessoal. Distribuir pirataria pode dar problema.</li>
+        </ul>
+    </div>
 
-<!-- FFmpeg.wasm 0.12.x (API nova) -->
-<script src="script.js" defer></script>
+    <div class="disclaimer">
+        Este guia é para fins educacionais e de aprendizado em engenharia reversa. Sempre apoie os desenvolvedores comprando a versão original se puder.
+    </div>
 
 </body>
 </html>

@@ -866,16 +866,46 @@ class ApiClient {
     return out;
   }
   searchItems(type, query){
-    const q = query.toLowerCase();
-    return this.getAllItems(type).filter(function(it){ return it.name.toLowerCase().indexOf(q) !== -1; });
+    // Busca robusta: ignora maiúsculas/minúsculas, acentos e espaços extras.
+    // Também procura pelo nome e pela categoria.
+    const normalize = function(value){
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\\u0300-\\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+    };
+    const q = normalize(query);
+    if(!q) return this.getAllItems(type);
+
+    const terms = q.split(/\\s+/).filter(Boolean);
+    return this.getAllItems(type).filter(function(it){
+      const text = normalize((it.name || '') + ' ' + (it.cat || ''));
+      return terms.every(function(term){ return text.indexOf(term) !== -1; });
+    });
   }
   getSeriesCategories(){
     const set = {}; SERIES_INDEX.forEach(function(s){ set[s.group]=1; }); return Object.keys(set).filter(function(n){ return !Parental.isLocked(n); });
   }
   getSeriesByCategory(cat){ if(Parental.isLocked(cat)) return []; return SERIES_INDEX.filter(function(s){ return s.group===cat; }); }
   searchSeries(query){
-    const q = query.toLowerCase();
-    return SERIES_INDEX.filter(function(s){ return s.name.toLowerCase().indexOf(q)!==-1 && !Parental.isLocked(s.group); });
+    const normalize = function(value){
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\\u0300-\\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+    };
+    const q = normalize(query);
+    if(!q) return [];
+    const terms = q.split(/\\s+/).filter(Boolean);
+    return SERIES_INDEX.filter(function(s){
+      if(Parental.isLocked(s.group)) return false;
+      const text = normalize((s.name || '') + ' ' + (s.group || ''));
+      return terms.every(function(term){ return text.indexOf(term) !== -1; });
+    });
   }
   getSeriesSeasons(seriesIdx){
     const s = SERIES_INDEX[seriesIdx]; if(!s) return {};
@@ -1883,7 +1913,10 @@ const UI = {
 
   doSearch(query){
     const wrap = document.getElementById('searchResultsWrap');
-    if(!query || query.trim().length < 2){ wrap.innerHTML = ''; return; }
+    if(!query || query.trim().length < 1){
+      wrap.innerHTML = '<div class="empty-state"><i class="bi bi-search"></i>Digite o nome do filme ou série</div>';
+      return;
+    }
     const q = query.trim();
     const chans = HAS_TYPES.canal ? Channels.search(q).slice(0,12) : [];
     const movs = HAS_TYPES.filme ? Movies.search(q).slice(0,12) : [];

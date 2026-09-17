@@ -1025,6 +1025,8 @@ class PlayerManager {
     this.currentSeriesMeta = null;
     this.nextEpisodeData = null;
     this.nextEpisodeTimerId = null;
+    this.loadToken = 0;
+
     document.getElementById('btnPlayPause').addEventListener('click', () => this.togglePlay());
     document.getElementById('btnMute').addEventListener('click', () => this.toggleMute());
     document.getElementById('speedSelect').addEventListener('change', (e) => { this.video.playbackRate = parseFloat(e.target.value); });
@@ -1043,7 +1045,7 @@ class PlayerManager {
       this.toggleChannelOverlay(false);
       if(UI.currentView === 'inicio') UI.renderHome();
     });
-    /* ---- Barra de progresso: arrastar pra buscar, e mostra tempo atual/total ---- */
+
     const seekEl = document.getElementById('playerSeek');
     seekEl.addEventListener('input', () => { this.isSeeking = true; });
     seekEl.addEventListener('change', () => {
@@ -1063,19 +1065,12 @@ class PlayerManager {
         ContinueWatching.saveProgress(this.currentUrl, this.video.currentTime, this.video.duration);
       }
     });
-    /* ---- Próximo episódio automático: quando o vídeo termina e é um
-       episódio de série, mostra um cartão "A seguir" com contagem
-       regressiva de 5s (dá pra cancelar), igual apps de streaming. */
     this.video.addEventListener('ended', () => {
       if(this.isLive || !this.currentSeriesMeta) return;
       const next = getNextEpisode(this.currentSeriesMeta.seriesIdx, this.currentSeriesMeta.season, this.currentUrl);
       if(next) this.showUpNext(next);
     });
-    /* ---- Transmitir para TV: Remote Playback API (Chromecast no Chrome/
-       Edge Android e desktop) + fallback para AirPlay legado (Safari).
-       Importante: esses recursos só existem em contexto seguro (HTTPS),
-       então se o app for aberto direto como arquivo local (file://) o
-       botão fica escondido — isso é restrição do navegador, não bug. */
+
     const castBtn = document.getElementById('btnCast');
     const hasRemote = ('remote' in this.video) && typeof this.video.remote.prompt === 'function';
     const hasLegacyAirplay = typeof this.video.webkitShowPlaybackTargetPicker === 'function';
@@ -1088,11 +1083,13 @@ class PlayerManager {
     } else { castBtn.style.display = 'none'; }
     this.applyMode();
   }
+
   formatTime(s){
     if(!isFinite(s) || s < 0) s = 0;
     const m = Math.floor(s/60), sec = Math.floor(s%60);
     return m + ':' + (sec<10?'0':'') + sec;
   }
+
   showUpNext(next){
     this.nextEpisodeData = next;
     document.getElementById('upNextTitle').textContent = next.ep.name;
@@ -1114,10 +1111,7 @@ class PlayerManager {
     document.getElementById('upNextCard').style.display = 'none';
     if(this.nextEpisodeTimerId){ clearInterval(this.nextEpisodeTimerId); this.nextEpisodeTimerId = null; }
   }
-  cancelNextEpisode(){
-    this.hideUpNext();
-    this.nextEpisodeData = null;
-  }
+  cancelNextEpisode(){ this.hideUpNext(); this.nextEpisodeData = null; }
   confirmNextEpisode(){
     const next = this.nextEpisodeData;
     this.hideUpNext();
@@ -1144,28 +1138,81 @@ class PlayerManager {
     this.autoplay = !this.autoplay;
     document.getElementById('autoplayStatus').textContent = this.autoplay ? 'Ativado' : 'Desativado';
   }
+
   destroy(){
+    this.loadToken++;
     if(this.hls){ try{ this.hls.destroy(); }catch(e){} this.hls=null; }
     if(this.mpegts){ try{ this.mpegts.destroy(); }catch(e){} this.mpegts=null; }
-    this.video.pause(); this.video.removeAttribute('src'); this.video.load();
+    this.video.pause();
+    this.video.removeAttribute('src');
+    this.video.removeAttribute('poster');
+    this.video.load();
     document.getElementById('playerSeek').value = 0;
     document.getElementById('playerTimeCur').textContent = '0:00';
     document.getElementById('playerTimeDur').textContent = '0:00';
   }
+
   detectKind(url){
     const clean = url.split('?')[0].toLowerCase();
-    if(/\.m3u8$/.test(clean)) return 'hls';
-    if(/\.ts$/.test(clean)) return 'ts';
-    if(/\.(mp4|mkv|webm|mov)$/.test(clean)) return 'native';
+    if(/\.m3u8(?:$|\?)/.test(clean)) return 'hls';
+    if(/\.ts(?:$|\?)/.test(clean)) return 'ts';
+    if(/\.(mp4|mkv|webm|mov)(?:$|\?)/.test(clean)) return 'native';
     return 'hls';
   }
-  /* _isRetry: chamada interna (retry automático), não reseta contador nem
-     estatísticas. O usuário nunca chama play() com esse parâmetro. */
+
+  /*
+   * GitHub Pages publica a página em HTTPS. Quando a fonte do vídeo ainda é
+   * HTTP, o navegador não deve tentar abrir essa URL insegura. Aqui fazemos
+   * uma única tentativa de upgrade para HTTPS. Se o servidor não oferecer
+   * HTTPS, o player informa exatamente o problema em vez de ficar preso em
+   * vários retries.
+   */
+  normalizeSource(url){
+    const pageIsHttps = location.protocol === 'https:';
+    const isHttp = /^http:\/\//i.test(url || '');
+    if(pageIsHttps && isHttp){
+      return { url: url.replace(/^http:\/\//i, 'https://'), upgraded: true, original:url };
+    }
+    return { url:url, upgraded:false, original:url };
+  }
+
+  mediaErrorMessage(){
+    const e = this.video.error;
+    if(!e) return 'A fonte não respondeu corretamente.';
+    switch(e.code){
+      case MediaError.MEDIA_ERR_ABORTED: return 'O carregamento foi interrompido.';
+      case MediaError.MEDIA_ERR_NETWORK: return 'Falha de rede ao carregar o vídeo.';
+      case MediaError.MEDIA_ERR_DECODE: return 'O navegador não conseguiu decodificar este vídeo.';
+      case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED: return 'Formato ou fonte de vídeo não suportado.';
+      default: return 'A fonte do vídeo não pôde ser carregada.';
+    }
+  }
+
+  showPlayerError(message){
+    document.getElementById('playerLoading').style.display='none';
+    UI.toast('❌ ' + message);
+  }
+
   play(url, name, poster, meta, _isRetry){
     if(!_isRetry){ this.retries = 0; this.forceEngine = null; }
+    if(!url || typeof url !== 'string'){
+      this.showPlayerError('URL de vídeo inválida.');
+      return;
+    }
+
+    const source = this.normalizeSource(url);
+    const sourceUrl = source.url;
+
+    // Em GitHub Pages não existe fallback seguro para HTTP.
+    // Não fazemos proxy/bypass: a própria origem do vídeo precisa oferecer HTTPS.
+    if(location.protocol === 'https:' && source.original !== sourceUrl && !/^https:\/\//i.test(sourceUrl)){
+      this.showPlayerError('Esta fonte usa HTTP. No GitHub Pages, use uma URL HTTPS do servidor de vídeo.');
+      return;
+    }
+
     this.destroy();
     this.hideUpNext();
-    this.currentUrl = url;
+    this.currentUrl = sourceUrl;
     this.isLive = !!(meta && meta.live);
     this.currentSeriesMeta = (!this.isLive && meta && meta.type === 'série' && meta.seriesIdx !== undefined) ? { seriesIdx: meta.seriesIdx, season: meta.season } : null;
     document.getElementById('playerTitle').textContent = name || 'Reproduzindo';
@@ -1180,84 +1227,114 @@ class PlayerManager {
     this.video.playbackRate = 1;
     this.applyMode();
     this.modal.show();
+
     const isChannel = !!(meta && meta.type === 'canal');
     document.getElementById('btnChannelToggle').classList.toggle('show', isChannel);
     if(!isChannel){ this.toggleChannelOverlay(false); }
     else if(document.getElementById('channelOverlay').classList.contains('open')){ this.renderChannelOverlay(); }
-    const kind = this.forceEngine === 'native' ? 'native' : this.detectKind(url);
+
+    const kind = this.forceEngine === 'native' ? 'native' : this.detectKind(sourceUrl);
     const self = this;
-    const saved = (!this.isLive) ? ContinueWatching.getProgress(url) : { position:0, duration:0 };
+    const token = ++this.loadToken;
+    const saved = (!this.isLive) ? ContinueWatching.getProgress(sourceUrl) : { position:0, duration:0 };
+    let ready = false;
+    let failed = false;
+
     const onReady = () => {
+      if(token !== self.loadToken || ready) return;
+      ready = true;
       document.getElementById('playerLoading').style.display='none';
-      // Retoma de onde parou (só pra VOD, e só se faltava mais de 15s pro fim)
       if(!self.isLive && saved.position > 5 && (!saved.duration || saved.duration - saved.position > 15)){
         try{ self.video.currentTime = saved.position; }catch(e){}
       }
       if(self.autoplay) self.video.play().catch(()=>{});
     };
+
     const onError = () => {
-      self.retries++;
-      if(self.retries <= 2){ setTimeout(() => self.play(url, name, poster, meta, true), 900); return; }
-      if(self.retries === 3 && kind !== 'native'){
-        // última tentativa: força o player <video> nativo do navegador,
-        // que às vezes toca fontes que hls.js/mpegts.js recusam.
-        self.forceEngine = 'native';
-        setTimeout(() => self.play(url, name, poster, meta, true), 900);
-        return;
-      }
-      document.getElementById('playerLoading').style.display='none';
-      UI.toast('❌ Não foi possível carregar este conteúdo. Tente novamente mais tarde.');
+      if(token !== self.loadToken || failed) return;
+      failed = true;
+      const detail = self.mediaErrorMessage();
+      self.showPlayerError(detail + (source.upgraded ? ' A URL HTTP foi convertida para HTTPS; confirme que o servidor realmente oferece HTTPS e CORS quando necessário.' : ''));
     };
+
+    this.video.addEventListener('loadedmetadata', onReady, { once:true });
+    this.video.addEventListener('canplay', onReady, { once:true });
+    this.video.addEventListener('error', onError, { once:true });
+
     try{
-      if(kind==='hls' && window.Hls && Hls.isSupported()){
-        this.hls = new Hls({ maxBufferLength: 30 });
-        this.hls.loadSource(url);
-        this.hls.attachMedia(this.video);
-        this.hls.on(Hls.Events.MANIFEST_PARSED, function(){
-          onReady();
-          if(self.hls.levels && self.hls.levels.length > 1){
-            const sel = document.getElementById('qualitySelect');
-            sel.style.display='inline-block';
-            sel.innerHTML = '<option value="-1">Auto</option>' + self.hls.levels.map(function(l,i){ return '<option value="'+i+'">'+(l.height||i)+'p</option>'; }).join('');
-            sel.onchange = function(){ self.hls.currentLevel = parseInt(sel.value,10); };
-          }
-          // Legendas embutidas no HLS (WebVTT/IMSC dentro do manifesto), se existirem
-          if(self.hls.subtitleTracks && self.hls.subtitleTracks.length){
-            const subSel = document.getElementById('subtitleSelect');
-            subSel.style.display='inline-block';
-            subSel.innerHTML = '<option value="-1">Legenda: Off</option>' + self.hls.subtitleTracks.map(function(t,i){ return '<option value="'+i+'">'+(t.name||t.lang||('Faixa '+(i+1)))+'</option>'; }).join('');
-            self.hls.subtitleDisplay = false;
-            subSel.onchange = function(){
-              const v = parseInt(subSel.value,10);
-              self.hls.subtitleTrack = v;
-              self.hls.subtitleDisplay = v !== -1;
-            };
-          }
-        });
-        this.hls.on(Hls.Events.ERROR, function(evt, data){ if(data.fatal) onError(); });
-      } else if(kind==='ts' && window.mpegts && mpegts.getFeatureList().mseLivePlayback){
-        this.mpegts = mpegts.createPlayer({ type:'mpegts', isLive:true, url: url });
-        this.mpegts.attachMediaElement(this.video);
-        this.mpegts.load();
-        this.mpegts.on(mpegts.Events.ERROR, onError);
-        this.video.addEventListener('loadeddata', onReady, { once:true });
-        this.mpegts.play();
+      if(kind==='hls'){
+        if(window.Hls && Hls.isSupported()){
+          this.hls = new Hls({
+            enableWorker: true,
+            lowLatencyMode: false,
+            backBufferLength: 90,
+            maxBufferLength: 30,
+            manifestLoadingMaxRetry: 2,
+            levelLoadingMaxRetry: 2,
+            fragLoadingMaxRetry: 2
+          });
+          this.hls.on(Hls.Events.ERROR, function(evt, data){
+            if(token !== self.loadToken) return;
+            if(data && data.fatal) onError();
+          });
+          this.hls.on(Hls.Events.MANIFEST_PARSED, function(){
+            if(token !== self.loadToken) return;
+            onReady();
+            if(self.hls && self.hls.levels && self.hls.levels.length > 1){
+              const sel = document.getElementById('qualitySelect');
+              sel.style.display='inline-block';
+              sel.innerHTML = '<option value="-1">Auto</option>' + self.hls.levels.map(function(l,i){ return '<option value="'+i+'">'+(l.height||i)+'p</option>'; }).join('');
+              sel.onchange = function(){ if(self.hls) self.hls.currentLevel = parseInt(sel.value,10); };
+            }
+            if(self.hls && self.hls.subtitleTracks && self.hls.subtitleTracks.length){
+              const subSel = document.getElementById('subtitleSelect');
+              subSel.style.display='inline-block';
+              subSel.innerHTML = '<option value="-1">Legenda: Off</option>' + self.hls.subtitleTracks.map(function(t,i){ return '<option value="'+i+'">'+(t.name||t.lang||('Faixa '+(i+1)))+'</option>'; }).join('');
+              self.hls.subtitleDisplay = false;
+              subSel.onchange = function(){
+                const v = parseInt(subSel.value,10);
+                if(self.hls){ self.hls.subtitleTrack = v; self.hls.subtitleDisplay = v !== -1; }
+              };
+            }
+          });
+          this.hls.loadSource(sourceUrl);
+          this.hls.attachMedia(this.video);
+        } else if(this.video.canPlayType('application/vnd.apple.mpegurl')){
+          this.video.src = sourceUrl;
+          this.video.load();
+        } else {
+          onError();
+        }
+      } else if(kind==='ts'){
+        if(window.mpegts && mpegts.getFeatureList().mseLivePlayback){
+          this.mpegts = mpegts.createPlayer({ type:'mpegts', isLive:true, url:sourceUrl });
+          this.mpegts.on(mpegts.Events.ERROR, onError);
+          this.mpegts.attachMediaElement(this.video);
+          this.mpegts.load();
+          if(this.autoplay) this.mpegts.play().catch(()=>{});
+        } else {
+          onError();
+        }
       } else {
-        this.video.src = url;
-        this.video.addEventListener('loadeddata', onReady, { once:true });
-        this.video.addEventListener('error', onError, { once:true });
+        // MP4/WebM/MOV: usar o elemento nativo, que é o caminho mais estável no Pages.
+        this.video.preload = 'metadata';
+        this.video.src = sourceUrl;
         this.video.load();
-        if(this.autoplay) this.video.play().catch(()=>{});
       }
-    }catch(e){ onError(); }
+    }catch(e){
+      console.error('[Player] erro ao iniciar fonte:', e);
+      onError();
+    }
+
     if(!_isRetry){
-      WatchStats.bump(url);
-      ContinueWatching.add({ url:url, name:name, poster:poster, type:(meta&&meta.type)||'canal', cat:(meta&&meta.cat)||'', position: saved.position||0, duration: saved.duration||0 });
+      WatchStats.bump(sourceUrl);
+      ContinueWatching.add({ url:sourceUrl, name:name, poster:poster, type:(meta&&meta.type)||'canal', cat:(meta&&meta.cat)||'', position: saved.position||0, duration: saved.duration||0 });
     }
   }
+
   togglePlay(){
     const icon = document.querySelector('#btnPlayPause i');
-    if(this.video.paused){ this.video.play(); icon.className='bi bi-pause-fill'; }
+    if(this.video.paused){ this.video.play().then(()=>{ icon.className='bi bi-pause-fill'; }).catch(()=>{}); }
     else { this.video.pause(); icon.className='bi bi-play-fill'; }
   }
   toggleMute(){
@@ -1312,17 +1389,6 @@ class PlayerManager {
   }
   close(){ playUiSound('close'); this.modal.hide(); }
 }
-
-/* ================= Instâncias globais ================= */
-const Auth = new AuthManager();
-const Parental = new ParentalManager();
-const Api = new ApiClient();
-const Favorites = new FavoritesManager();
-const ContinueWatching = new ContinueWatchingManager();
-const WatchStats = new WatchStatsManager();
-const Channels = new ChannelManager(Api);
-const Movies = new MovieManager(Api);
-const Series = new SeriesManager(Api);
 const Player = new PlayerManager();
 window.playVideo = function(url,name,poster,meta){
     // Fecha a busca (que tem z-index acima do player) antes de tocar, senão

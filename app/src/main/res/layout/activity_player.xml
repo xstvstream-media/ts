@@ -1,4 +1,4 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000000">
-    <androidx.media3.ui.PlayerView android:id="@+id/playerView" android:layout_width="match_parent" android:layout_height="match_parent" android:keepScreenOn="true" android:show_buffering="when_playing"/>
+    <androidx.media3.ui.PlayerView android:id="@+id/playerView" android:layout_width="match_parent" android:layout_height="match_parent" android:keepScreenOn="true" />
     <TextView android:id="@+id/playerTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="top|start" android:layout_margin="16dp" android:padding="8dp" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="15sp" android:background="#99000000"/>
 </FrameLayout>

@@ -1,0 +1,7 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="5dp">
+    <FrameLayout android:layout_width="match_parent" android:layout_height="210dp" android:background="@drawable/bg_card">
+        <ImageView android:id="@+id/poster" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="centerCrop"/>
+        <TextView android:id="@+id/fav" android:layout_width="34dp" android:layout_height="34dp" android:layout_gravity="top|end" android:gravity="center" android:text="♡" android:textColor="#FFFFFF" android:textSize="22sp" android:background="#99000000"/>
+        <TextView android:id="@+id/title" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_gravity="bottom" android:padding="10dp" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="12sp" android:maxLines="2" android:ellipsize="end" android:background="#B0000000"/>
+    </FrameLayout>
+</LinearLayout>

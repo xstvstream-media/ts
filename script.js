@@ -332,6 +332,8 @@
 
   function bindMenuToggle() {
     $("#menuToggle").addEventListener("click", () => $("#sidePanel").classList.toggle("is-open"));
+    const backBtn = $("#btnPanelBack");
+    if (backBtn) backBtn.addEventListener("click", () => $("#sidePanel").classList.remove("is-open"));
   }
 
   /* ============================================================

@@ -167,6 +167,12 @@ input,textarea,select,button{ font-family:inherit; }
   border-left:1px solid var(--line-soft);
   display:flex; flex-direction:column; min-height:0;
 }
+.panel-head{ display:none; padding:10px 14px; border-bottom:1px solid var(--line-soft); flex-shrink:0; }
+.btn-back{
+  background:none; border:none; color:var(--text-1);
+  font-size:14px; font-weight:500; cursor:pointer; padding:6px 2px;
+}
+.btn-back:hover{ color:var(--text-0); }
 .tabs{
   display:flex; overflow-x:auto; flex-shrink:0;
   border-bottom:1px solid var(--line-soft);
@@ -277,6 +283,7 @@ input[type=checkbox].switch{ width:40px; height:22px; accent-color:var(--accent)
     box-shadow:-16px 0 40px rgba(0,0,0,.4);
   }
   .panel.is-open{ transform:translateX(0); }
+  .panel-head{ display:block; }
   .topbar-menu-toggle{ display:block; }
   .topbar-actions .btn-ghost{ display:none; }
   .stage-frame{ width:300px; height:560px; }

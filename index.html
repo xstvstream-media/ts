@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<title>Dialog Studio</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="app">
+
+    <!-- Cabeçalho -->
+    <header class="topbar">
+      <div class="topbar-brand">
+        <span class="topbar-mark">◆</span>
+        <span class="topbar-title">Dialog Studio</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" id="btnImport" title="Importar JSON">Importar</button>
+        <button class="btn btn-ghost" id="btnSave" title="Salvar projeto no navegador">Salvar</button>
+        <button class="btn btn-ghost" id="btnJson" title="Exportar configuração em JSON">JSON</button>
+        <button class="btn btn-outline" id="btnCode" title="Gerar código do componente">Gerar código</button>
+        <button class="btn btn-solid" id="btnExport" title="Exportar arquivos do componente">Exportar</button>
+      </div>
+      <button class="topbar-menu-toggle" id="menuToggle" aria-label="Alternar painel">☰</button>
+    </header>
+
+    <div class="workspace">
+
+      <!-- Painel de pré-visualização -->
+      <main class="stage">
+        <div class="stage-toolbar">
+          <span class="stage-label">Pré-visualização</span>
+          <div class="stage-devices">
+            <button class="device-btn is-active" data-device="phone" title="Celular">📱</button>
+            <button class="device-btn" data-device="desktop" title="Computador">🖥️</button>
+          </div>
+        </div>
+        <div class="stage-canvas" id="stageCanvas">
+          <div class="stage-frame" id="stageFrame">
+            <div class="fake-app">
+              <div class="fake-app-bar"></div>
+              <div class="fake-app-body"></div>
+            </div>
+            <div class="ds-overlay" id="previewOverlay">
+              <div class="ds-dialog" id="previewDialog" role="dialog" aria-modal="true">
+                <div class="ds-icon" id="pvIcon">🚀</div>
+                <h2 class="ds-title" id="pvTitle">Novo recurso disponível</h2>
+                <p class="ds-subtitle" id="pvSubtitle">Atualize agora e aproveite</p>
+                <p class="ds-text" id="pvText">Descubra as novidades desta versão e aproveite ao máximo o aplicativo.</p>
+                <ul class="ds-items" id="pvItems"></ul>
+                <div class="ds-buttons" id="pvButtons"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="stage-hint">A caixa é apenas ilustrativa aqui — no seu app ela abre com <code>openDialog()</code>.</div>
+      </main>
+
+      <!-- Painel de configurações -->
+      <aside class="panel" id="sidePanel">
+        <nav class="tabs" id="tabs">
+          <button class="tab is-active" data-tab="conteudo">Conteúdo</button>
+          <button class="tab" data-tab="itens">Itens</button>
+          <button class="tab" data-tab="botoes">Botões</button>
+          <button class="tab" data-tab="estilo">Estilo</button>
+          <button class="tab" data-tab="animacao">Animação</button>
+        </nav>
+
+        <div class="tab-panels">
+
+          <!-- CONTEÚDO -->
+          <section class="tab-panel is-active" data-panel="conteudo">
+            <label class="field">
+              <span class="field-label">Ícone ou emoji</span>
+              <input type="text" id="fIcon" maxlength="4" placeholder="🚀">
+            </label>
+            <label class="field">
+              <span class="field-label">Título</span>
+              <input type="text" id="fTitle" placeholder="Título do diálogo">
+            </label>
+            <label class="field">
+              <span class="field-label">Subtítulo</span>
+              <input type="text" id="fSubtitle" placeholder="Subtítulo (opcional)">
+            </label>
+            <label class="field">
+              <span class="field-label">Texto principal</span>
+              <textarea id="fText" rows="3" placeholder="Descrição do diálogo"></textarea>
+            </label>
+          </section>
+
+          <!-- ITENS -->
+          <section class="tab-panel" data-panel="itens">
+            <p class="panel-note">Lista de recursos com ícone, exibida entre o texto e os botões.</p>
+            <div class="list-editor" id="itemsList"></div>
+            <button class="btn btn-dashed" id="btnAddItem">+ Adicionar item</button>
+          </section>
+
+          <!-- BOTÕES -->
+          <section class="tab-panel" data-panel="botoes">
+            <p class="panel-note">Cada botão pode fechar o diálogo, abrir um link ou chamar uma função JavaScript.</p>
+            <div class="list-editor" id="buttonsList"></div>
+            <button class="btn btn-dashed" id="btnAddButton">+ Adicionar botão</button>
+          </section>
+
+          <!-- ESTILO -->
+          <section class="tab-panel" data-panel="estilo">
+            <div class="field-grid">
+              <label class="field">
+                <span class="field-label">Cor de fundo</span>
+                <input type="color" id="sBg">
+              </label>
+              <label class="field">
+                <span class="field-label">Cor da borda</span>
+                <input type="color" id="sBorder">
+              </label>
+              <label class="field">
+                <span class="field-label">Cor do título</span>
+                <input type="color" id="sTitleColor">
+              </label>
+              <label class="field">
+                <span class="field-label">Cor do texto</span>
+                <input type="color" id="sTextColor">
+              </label>
+            </div>
+
+            <label class="field">
+              <span class="field-label">Espessura da borda <em id="vBorderWidth"></em></span>
+              <input type="range" id="sBorderWidth" min="0" max="8" step="1">
+            </label>
+            <label class="field">
+              <span class="field-label">Arredondamento <em id="vRadius"></em></span>
+              <input type="range" id="sRadius" min="0" max="40" step="1">
+            </label>
+            <label class="field">
+              <span class="field-label">Largura <em id="vWidth"></em></span>
+              <input type="range" id="sWidth" min="260" max="480" step="10">
+            </label>
+            <label class="field">
+              <span class="field-label">Espaçamento interno <em id="vPadding"></em></span>
+              <input type="range" id="sPadding" min="12" max="48" step="2">
+            </label>
+            <label class="field">
+              <span class="field-label">Espaçamento entre itens <em id="vSpacing"></em></span>
+              <input type="range" id="sSpacing" min="4" max="28" step="2">
+            </label>
+            <label class="field">
+              <span class="field-label">Tamanho do texto <em id="vFontSize"></em></span>
+              <input type="range" id="sFontSize" min="12" max="22" step="1">
+            </label>
+            <label class="field">
+              <span class="field-label">Fonte</span>
+              <select id="sFont">
+                <option value="'Inter', system-ui, sans-serif">Inter (padrão)</option>
+                <option value="'Segoe UI', Roboto, sans-serif">Segoe UI / Roboto</option>
+                <option value="Georgia, 'Times New Roman', serif">Serifada</option>
+                <option value="'Courier New', monospace">Monoespaçada</option>
+              </select>
+            </label>
+          </section>
+
+          <!-- ANIMAÇÃO -->
+          <section class="tab-panel" data-panel="animacao">
+            <label class="field field-row">
+              <span class="field-label">Ativar animações</span>
+              <input type="checkbox" id="aEnabled" class="switch">
+            </label>
+            <label class="field">
+              <span class="field-label">Animação de entrada</span>
+              <select id="aIn">
+                <option value="scale-up">Escala suave</option>
+                <option value="slide-up">Subir de baixo</option>
+                <option value="fade-in">Apenas opacidade</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">Animação de saída</span>
+              <select id="aOut">
+                <option value="fade-out">Apenas opacidade</option>
+                <option value="scale-down">Escala suave</option>
+                <option value="slide-down">Descer</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">Opacidade do fundo <em id="vOverlayOpacity"></em></span>
+              <input type="range" id="aOverlayOpacity" min="0" max="0.9" step="0.05">
+            </label>
+            <label class="field">
+              <span class="field-label">Desfoque do fundo <em id="vOverlayBlur"></em></span>
+              <input type="range" id="aOverlayBlur" min="0" max="12" step="1">
+            </label>
+          </section>
+
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Modal: código gerado -->
+  <div class="modal-overlay" id="codeModal">
+    <div class="modal">
+      <div class="modal-head">
+        <span>Código gerado</span>
+        <button class="modal-close" id="closeCodeModal">✕</button>
+      </div>
+      <div class="modal-tabs">
+        <button class="modal-tab is-active" data-code="html">HTML</button>
+        <button class="modal-tab" data-code="css">CSS</button>
+        <button class="modal-tab" data-code="js">JavaScript</button>
+        <button class="modal-tab" data-code="single">Arquivo único</button>
+      </div>
+      <pre class="code-box"><code id="codeOutput"></code></pre>
+      <div class="modal-foot">
+        <span class="modal-hint" id="copyHint">Toque em "Copiar" para usar em outro projeto.</span>
+        <button class="btn btn-solid" id="btnCopyCode">Copiar código</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: importar JSON -->
+  <div class="modal-overlay" id="importModal">
+    <div class="modal">
+      <div class="modal-head">
+        <span>Importar configuração (JSON)</span>
+        <button class="modal-close" id="closeImportModal">✕</button>
+      </div>
+      <textarea class="code-input" id="importInput" placeholder='Cole aqui o JSON exportado pelo Dialog Studio...'></textarea>
+      <div class="modal-foot">
+        <span class="modal-hint" id="importHint"></span>
+        <button class="btn btn-solid" id="btnConfirmImport">Importar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>

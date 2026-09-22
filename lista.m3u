@@ -1,0 +1,9 @@
+#EXTM3U
+#EXTINF:-1 tvg-logo="" group-title="CANAIS",Canal Exemplo 1
+http://play.biturl.vip/live/antonio33vip/1sx3xko3erq/1.ts
+
+#EXTINF:-1 tvg-logo="" group-title="FILMES",Filme Exemplo 1
+http://play.biturl.vip/movie/antonio33vip/1sx3xko3erq/1.mp4
+
+#EXTINF:-1 tvg-logo="" group-title="SERIES",Serie Exemplo S01E01
+http://play.biturl.vip/series/antonio33vip/1sx3xko3erq/1.mp4
